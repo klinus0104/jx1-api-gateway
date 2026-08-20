@@ -1,0 +1,15 @@
+output = "internal/db/models"
+pkgname = "models"
+no-tests = true
+no-hooks = true
+add-soft-deletes = false
+
+[mssql]
+dbname = "account_tong"
+host = "127.0.0.1"
+port = 1433
+user = "sa"
+pass = "SAJx123456"
+sslmode = "disable"
+schema = "dbo"
+whitelist = ["Account_Info", "Account_Habitus", "Account_Info2", "gm_users", "gm_user_roles"]

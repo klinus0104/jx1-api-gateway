@@ -1,0 +1,123 @@
+openapi: 3.0.3
+info:
+  title: VLTK GM API
+  version: 0.1.0
+  description: Administrative API for account and session operations.
+servers:
+  - url: http://localhost:8080
+tags:
+  - name: System
+  - name: Auth
+  - name: Accounts
+  - name: Players
+  - name: Audit
+paths:
+  /api/v1/player/accounts/register:
+    post:
+      summary: Register a player account
+      requestBody: {required: true, content: {application/json: {schema: {type: object}}}}
+      responses: {"201": {description: Account created}, "409": {description: Account exists}}
+  /api/v1/player/auth/login:
+    post:
+      summary: Player login
+      requestBody: {required: true, content: {application/json: {schema: {type: object}}}}
+      responses: {"200": {description: Login successful}, "401": {description: Invalid credentials}}
+  /api/v1/player/profile:
+    get:
+      summary: Get player profile
+      security: [{bearerAuth: []}]
+      responses: {"200": {description: Player profile}}
+  /api/v1/player/accounts/change-password:
+    post:
+      summary: Change player password
+      security: [{bearerAuth: []}]
+      responses: {"200": {description: Password changed}, "401": {description: Invalid password}}
+  /healthz:
+    get:
+      tags: [System]
+      responses: {"200": {description: Service is alive}}
+  /readyz:
+    get:
+      tags: [System]
+      responses: {"200": {description: Dependencies are ready}, "503": {description: Dependency unavailable}}
+  /openapi.yaml:
+    get:
+      tags: [System]
+      responses: {"200": {description: OpenAPI document}}
+  /api/v1/auth/login:
+    post:
+      tags: [Auth]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/LoginRequest'}}}
+      responses: {"200": {description: Authenticated, content: {application/json: {schema: {$ref: '#/components/schemas/LoginResponse'}}}}, "401": {$ref: '#/components/responses/Unauthorized'}}
+  /api/v1/auth/logout:
+    post:
+      tags: [Auth]
+      security: [{bearerAuth: []}]
+      responses: {"200": {description: Token revoked}}
+  /api/v1/me:
+    get:
+      tags: [Auth]
+      security: [{bearerAuth: []}]
+      responses: {"200": {description: Current GM identity}, "401": {$ref: '#/components/responses/Unauthorized'}}
+  /api/v1/admin/accounts:
+    get:
+      tags: [Accounts]
+      security: [{bearerAuth: []}]
+      parameters: [{name: q, in: query, required: true, schema: {type: string}}]
+      responses: {"200": {description: Matching accounts}}
+  /api/v1/admin/accounts/{name}:
+    get:
+      tags: [Accounts]
+      security: [{bearerAuth: []}]
+      parameters: [{name: name, in: path, required: true, schema: {type: string}}]
+      responses: {"200": {description: Account}}
+  /api/v1/admin/accounts/{name}/sessions:
+    get:
+      tags: [Accounts]
+      security: [{bearerAuth: []}]
+      parameters: [{name: name, in: path, required: true, schema: {type: string}}]
+      responses: {"200": {description: Session state}}
+  /api/v1/admin/accounts/{name}/block:
+    post: {$ref: '#/components/pathItems/accountMutation'}
+  /api/v1/admin/accounts/{name}/unblock:
+    post: {$ref: '#/components/pathItems/accountMutation'}
+  /api/v1/admin/accounts/{name}/reset-password:
+    post:
+      tags: [Accounts]
+      security: [{bearerAuth: []}]
+      parameters: [{name: name, in: path, required: true, schema: {type: string}}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ActionRequest'}}}}
+      responses: {"200": {description: Password reset}, "400": {$ref: '#/components/responses/BadRequest'}, "403": {$ref: '#/components/responses/Forbidden'}}
+  /api/v1/admin/players/{id}/kick:
+    post: {$ref: '#/components/pathItems/playerMutation'}
+  /api/v1/audit-logs:
+    get:
+      tags: [Audit]
+      security: [{bearerAuth: []}]
+      responses: {"200": {description: Recent audit events}}
+components:
+  pathItems:
+    accountMutation:
+      tags: [Accounts]
+      security: [{bearerAuth: []}]
+      parameters: [{name: name, in: path, required: true, schema: {type: string}}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ActionRequest'}}}}
+      responses: {"200": {description: Action completed}, "400": {$ref: '#/components/responses/BadRequest'}, "403": {$ref: '#/components/responses/Forbidden'}}
+    playerMutation:
+      tags: [Players]
+      security: [{bearerAuth: []}]
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ActionRequest'}}}}
+      responses: {"200": {description: Action completed}, "400": {$ref: '#/components/responses/BadRequest'}, "403": {$ref: '#/components/responses/Forbidden'}}
+  schemas:
+    LoginRequest: {type: object, required: [username, password], properties: {username: {type: string}, password: {type: string, format: password}}}
+    LoginResponse: {type: object, properties: {success: {type: boolean}, token: {type: string}, expires_in: {type: integer}}}
+    ActionRequest: {type: object, required: [reason], properties: {reason: {type: string}, ticket_id: {type: string}, password: {type: string, format: password}}}
+  responses:
+    Unauthorized: {description: Authentication required}
+    Forbidden: {description: Insufficient role}
+    BadRequest: {description: Invalid request}
+  securitySchemes:
+    bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
