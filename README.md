@@ -28,6 +28,30 @@ pkg/heaven/              Heaven/S3Relay protocol client
 docs/                    OpenAPI and Swagger assets
 ```
 
+## Request and startup flow
+
+```mermaid
+flowchart TD
+    Start[web-service start] --> Config[Load envconfig]
+    Config --> DB[Open and ping MSSQL]
+    DB --> Migrate[Run embedded migration]
+    Migrate --> Repos[Initialize repositories]
+    Repos --> Services[Initialize services]
+    Services --> HTTP[Start Fiber HTTP server]
+
+    Request[HTTP request] --> Rate[Rate limiter]
+    Rate --> Auth[JWT middleware]
+    Auth --> Handler[AdminHandler / PlayerHandler / AuthHandler]
+    Handler --> Service[Service layer]
+    Service --> Repo[SQLBoiler repositories]
+    Service -. admin kick/block .-> Heaven[Heaven/S3Relay client]
+    Repo --> MSSQL[(MSSQL)]
+```
+
+Requests are kept at the HTTP boundary: middleware validates the request,
+handlers translate Fiber context into typed service requests, and services
+coordinate repositories and optional Heaven realtime actions.
+
 ## API
 
 ### System
